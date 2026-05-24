@@ -86,7 +86,12 @@ export interface IndicatorSearchResult {
  *   - `lib/ecos.ts`에 `fetchEcosStatTableList()` 추가
  *   - 한국은행 100대 통계지표 자동 수집
  */
-const KNOWN_INDICATORS: ReadonlyArray<{
+/**
+ * v0.2 export 추가 — `get_dashboard` 등 다른 도구가 동일 사전을 참조.
+ * @public 도구 영역 데이터 공유. lib/* 무수정 룰 우회 (도구 → 도구 import).
+ *   v0.3에서 `src/data/known-indicators.ts` 분리 검토.
+ */
+export const KNOWN_INDICATORS: ReadonlyArray<{
   code: string;
   name: string;
   cycle: "D" | "M" | "Q" | "S" | "Y";

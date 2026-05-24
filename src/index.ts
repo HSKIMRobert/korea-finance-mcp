@@ -40,6 +40,11 @@ import {
   executeCompareIndicators,
   CompareIndicatorsInputSchema,
 } from "./tools/compare_indicators.js";
+import {
+  getDashboardTool,
+  executeGetDashboard,
+  GetDashboardInputSchema,
+} from "./tools/get_dashboard.js";
 
 // ============================================================
 // 환경변수 로드 (.env)
@@ -85,8 +90,15 @@ const TOOLS: ToolDefinition[] = [
     execute: async (input) =>
       executeCompareIndicators(CompareIndicatorsInputSchema.parse(input)),
   },
+  {
+    name: getDashboardTool.name,
+    description: getDashboardTool.description,
+    inputSchema: getDashboardTool.inputSchema,
+    execute: async (input) =>
+      executeGetDashboard(GetDashboardInputSchema.parse(input)),
+  },
   // 👇 새 도구는 이 아래에 추가
-  // Layer A 잔여: get_dashboard (v1.0 5/5 완성 직전)
+  // 🏆 v1.0 거시 5/5 완성 (2026-05-25). 다음은 v2.0 부동산 (5~8주차).
 ];
 
 // ============================================================

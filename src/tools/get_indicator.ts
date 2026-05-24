@@ -124,7 +124,11 @@ export async function executeGetIndicator(
 // ============================================================
 // [4] 헬퍼 (도구 내부용)
 // ============================================================
-function computeRecentPeriod(cycle: EcosCycle): {
+/**
+ * @public Layer A 도구 간 공유 — `get_dashboard` 등이 동일 윈도 로직 사용.
+ *   v0.3에서 `src/tools/_helpers.ts` 분리 검토.
+ */
+export function computeRecentPeriod(cycle: EcosCycle): {
   startDate: string;
   endDate: string;
 } {
