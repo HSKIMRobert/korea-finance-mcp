@@ -12,7 +12,10 @@
 
 import { describe, expect, it } from "vitest";
 import { assertStandardResponse } from "../setup.js";
-import { executeSearchIndicator } from "../../src/tools/search_indicator.js";
+import {
+  executeSearchIndicator,
+  KNOWN_INDICATORS,
+} from "../../src/tools/search_indicator.js";
 
 describe("search_indicator — 회귀 5건", () => {
   // ──────────────────────────────────────────────
@@ -98,5 +101,47 @@ describe("search_indicator — 회귀 5건", () => {
     });
     assertStandardResponse(spaced);
     expect(spaced.data!.map((r) => r.code)).toContain("731Y001");
+  });
+
+  // ──────────────────────────────────────────────
+  // #6 v0.2 신규 사전 — CPI/GDP/M2 매칭 (WO-016)
+  // WO-018: 3건 일시 비활성 → it.skip (검증 후 it으로 복귀)
+  // ──────────────────────────────────────────────
+  it.skip("#6 v0.2 신규 사전 — 'CPI'·'GDP'·'M2' 매칭 + cycle 정확 (WO-018 skip)", async () => {
+    const cpi = await executeSearchIndicator({ query: "CPI", limit: 10 });
+    assertStandardResponse(cpi);
+    const cpiItem = cpi.data!.find((r) => r.code === "901Y009");
+    expect(cpiItem, "901Y009 매칭").toBeDefined();
+    expect(cpiItem!.cycle).toBe("M");
+
+    const gdp = await executeSearchIndicator({ query: "GDP", limit: 10 });
+    assertStandardResponse(gdp);
+    const gdpItem = gdp.data!.find((r) => r.code === "200Y001");
+    expect(gdpItem, "200Y001 매칭").toBeDefined();
+    expect(gdpItem!.cycle).toBe("Q");
+
+    const m2 = await executeSearchIndicator({ query: "통화량", limit: 10 });
+    assertStandardResponse(m2);
+    const m2Item = m2.data!.find((r) => r.code === "101Y004");
+    expect(m2Item, "101Y004 매칭").toBeDefined();
+    expect(m2Item!.cycle).toBe("M");
+  });
+
+  // ──────────────────────────────────────────────
+  // #7 KNOWN_INDICATORS healthcheck (WO-019 재작성)
+  // KNOWN_INDICATORS 직접 import → length 검증 (검색 우회, 사전 변동에 무관)
+  // ──────────────────────────────────────────────
+  it("#7 KNOWN_INDICATORS healthcheck — 사전 비어있지 않음 + 각 항목 필수 필드", () => {
+    // 사전 크기 >= 1 (최소 healthcheck)
+    expect(KNOWN_INDICATORS.length).toBeGreaterThan(0);
+
+    // 각 항목이 필수 필드(code/name/cycle/unit/keywords) 모두 있는지 검증
+    for (const ind of KNOWN_INDICATORS) {
+      expect(ind.code, "code 필수").toBeTruthy();
+      expect(ind.name, "name 필수").toBeTruthy();
+      expect(ind.cycle, "cycle 필수").toMatch(/^[DMQSY]$/);
+      expect(ind.unit, "unit 필수").toBeTruthy();
+      expect(ind.keywords.length, "keywords 1개 이상 필수").toBeGreaterThan(0);
+    }
   });
 });

@@ -112,6 +112,23 @@ export const KNOWN_INDICATORS: ReadonlyArray<{
     unit: "원",
     keywords: ["환율", "원달러", "원/달러", "달러", "USD", "USD/KRW"],
   },
+  // WO-016 (2026-05-25) 3건 시도 → WO-018 (2026-05-25) 일시 비활성:
+  // CPI/GDP/M2 추측 코드가 ECOS 검색에서 ❌ (Step B 결과). 안전 복귀.
+  // 다음 라운드 ECOS API 정확 호출 (StatisticItemList 또는 /1/1000/)로 검증 후 활성.
+  // 코드는 *유지 (주석)* — 검증 후 즉시 활성 위해.
+  //
+  // {
+  //   code: "901Y009", name: "소비자물가지수 (CPI)", cycle: "M", unit: "지수",
+  //   keywords: ["CPI", "소비자물가", "물가", "물가지수", "인플레이션", "소비자물가지수"],
+  // },
+  // {
+  //   code: "200Y001", name: "실질 국내총생산 (GDP)", cycle: "Q", unit: "십억원",
+  //   keywords: ["GDP", "국내총생산", "실질GDP", "경제성장률", "성장률"],
+  // },
+  // {
+  //   code: "101Y004", name: "M2 통화량 (광의통화)", cycle: "M", unit: "조원",
+  //   keywords: ["M2", "통화량", "광의통화", "통화공급", "유동성"],
+  // },
 ];
 
 // ECOS 공식 검색 페이지 URL

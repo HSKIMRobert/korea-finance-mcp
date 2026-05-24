@@ -35,18 +35,37 @@ describe("get_dashboard — 회귀 5건", () => {
     vi.useFakeTimers();
   });
 
+  // WO-017 핫픽스 헬퍼: cycle별 정확한 TIME 형식 생성
+  // (KNOWN_INDICATORS가 다양한 cycle을 포함 — D/M/Q/S/Y 모두 대응)
+  function timeForCycle(cycle: "D" | "M" | "Q" | "S" | "Y", idx: number): string {
+    const day = String((idx % 28) + 1).padStart(2, "0");
+    const month = String((idx % 12) + 1).padStart(2, "0");
+    switch (cycle) {
+      case "D":
+        return `2024${month}${day}`; // YYYYMMDD
+      case "M":
+        return `2024${month}`; // YYYYMM
+      case "Q":
+        return `2024Q${(idx % 4) + 1}`; // YYYYQq
+      case "S":
+        return `2024S${(idx % 2) + 1}`; // YYYYSh
+      case "Y":
+        return `${2024 - idx}`; // YYYY
+    }
+  }
+
   // ──────────────────────────────────────────────
   // #1 정상 — 사전 N건 모두 응답
   // ──────────────────────────────────────────────
   it("#1 사전 모든 지표 최신값 반환 + 표준 4필드 + generated_at ISO", async () => {
-    // 사전 각 항목에 대해 정상 응답 mock (TIME은 코드별 차별화)
+    // 사전 각 항목에 대해 정상 응답 mock (TIME은 cycle별 정확한 형식)
     KNOWN_INDICATORS.forEach((ind, idx) => {
       mockFetch.mockResolvedValueOnce(
         makeEcosResponse([
           {
             STAT_CODE: ind.code,
             STAT_NAME: ind.name,
-            TIME: `2024050${idx + 1}`,
+            TIME: timeForCycle(ind.cycle, idx),
             DATA_VALUE: "1.0",
             UNIT_NAME: ind.unit,
           },
@@ -169,7 +188,7 @@ describe("get_dashboard — 회귀 5건", () => {
           {
             STAT_CODE: ind.code,
             STAT_NAME: ind.name,
-            TIME: `2024050${idx + 1}`,
+            TIME: timeForCycle(ind.cycle, idx),
             DATA_VALUE: "1.0",
             UNIT_NAME: ind.unit,
           },

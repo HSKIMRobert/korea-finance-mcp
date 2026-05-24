@@ -145,18 +145,38 @@ export function computeRecentPeriod(cycle: EcosCycle): {
         endDate: `${yyyy}${mm}${dd}`,
       };
     case "M":
-      // 최근 12개월
+      // 최근 12개월 (현재 월까지만)
       return {
         startDate: `${yyyy - 1}${mm}`,
         endDate: `${yyyy}${mm}`,
       };
-    case "Q":
-      // 최근 8분기
-      return { startDate: `${yyyy - 2}Q1`, endDate: `${yyyy}Q4` };
-    case "S":
-      return { startDate: `${yyyy - 2}S1`, endDate: `${yyyy}S2` };
-    case "Y":
-      return { startDate: `${yyyy - 10}`, endDate: `${yyyy}` };
+    case "Q": {
+      // WO-017 핫픽스: 미래 분기 미포함. 현재 월 기준 *이전 분기*까지만 (발표 지연 보정).
+      // 예: 2026-05 (Q2 진행 중) → end = 2026Q1 (가장 최근 발표 분기)
+      const monthIdx = now.getUTCMonth(); // 0~11
+      let qNum = Math.floor(monthIdx / 3); // 0=Q1진행중→이전=작년Q4, 1=Q2진행중→Q1, 2=Q3진행중→Q2, 3=Q4진행중→Q3
+      let qYear = yyyy;
+      if (qNum === 0) {
+        qYear -= 1;
+        qNum = 4;
+      }
+      return { startDate: `${qYear - 2}Q1`, endDate: `${qYear}Q${qNum}` };
+    }
+    case "S": {
+      // 반기도 동일 (현재 반기 미포함)
+      const monthIdx = now.getUTCMonth();
+      let sNum = monthIdx < 6 ? 0 : 1; // 0=H1진행중→작년H2, 1=H2진행중→H1
+      let sYear = yyyy;
+      if (sNum === 0) {
+        sYear -= 1;
+        sNum = 2;
+      }
+      return { startDate: `${sYear - 2}S1`, endDate: `${sYear}S${sNum}` };
+    }
+    case "Y": {
+      // 연도도 동일 (작년까지 — 현재 연도 미완료)
+      return { startDate: `${yyyy - 10}`, endDate: `${yyyy - 1}` };
+    }
   }
 }
 
@@ -190,6 +210,19 @@ export function ecosTimeToIso(time: string, cycle: EcosCycle): string {
   if (cycle === "Y" && /^\d{4}$/.test(time)) {
     return `${time}-01-01T00:00:00Z`;
   }
-  // 분기·반기는 v0.2에서 정밀 변환 추가
+  // WO-018 (2026-05-25): Q/S 변환 추가 (v0.2 백로그 정밀화)
+  if (cycle === "Q" && /^\d{4}Q[1-4]$/.test(time)) {
+    const year = time.slice(0, 4);
+    const q = parseInt(time.slice(5), 10);
+    const month = String((q - 1) * 3 + 1).padStart(2, "0"); // Q1→01, Q2→04, Q3→07, Q4→10
+    return `${year}-${month}-01T00:00:00Z`;
+  }
+  if (cycle === "S" && /^\d{4}S[1-2]$/.test(time)) {
+    const year = time.slice(0, 4);
+    const s = parseInt(time.slice(5), 10);
+    const month = s === 1 ? "01" : "07";
+    return `${year}-${month}-01T00:00:00Z`;
+  }
+  // 매칭 실패 시 fallback (추측 금지 원칙 — 다만 회귀 안전망)
   return new Date().toISOString();
 }
