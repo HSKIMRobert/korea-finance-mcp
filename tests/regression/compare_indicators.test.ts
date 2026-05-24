@@ -140,6 +140,10 @@ describe("compare_indicators — 회귀 5건", () => {
         new Error("[ecos] API 에러 INFO-300: 통계코드 없음"),
       );
 
+    // 🚨 unhandled rejection 회피 패턴 (v0.2 회귀 핫픽스):
+    // promise 생성 직후 expect로 *먼저* wrapping → reject가 항상 expect에 잡힘.
+    // advanceTimersByTimeAsync가 sleep을 깨우면서 즉시 두 번째 fetch가 reject되는데,
+    // 그 시점에 expect.rejects가 await 중이 아니면 Vitest가 unhandled rejection으로 잡음.
     const promise = executeCompareIndicators({
       indicators: [
         { code: "A", cycle: "M" },
@@ -148,8 +152,11 @@ describe("compare_indicators — 회귀 5건", () => {
       start: "202402",
       end: "202403",
     });
+    const assertionPromise = expect(promise).rejects.toThrow(
+      /INFO-300|통계코드 없음/,
+    );
     await vi.advanceTimersByTimeAsync(300);
-    await expect(promise).rejects.toThrow(/INFO-300|통계코드 없음/);
+    await assertionPromise;
   });
 
   // ──────────────────────────────────────────────
