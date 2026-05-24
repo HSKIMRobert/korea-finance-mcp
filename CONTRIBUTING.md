@@ -159,6 +159,24 @@ docs(handoff): update tool count
 - [ ] **회귀 시나리오 30/30 모두 통과** — v0.2 이상 유지
 - [ ] `wiki/korea-finance-mcp/handoff.md` §11 진행 상태 표 갱신 (PR 본문에 mywiki 측 diff 첨부)
 
+### e2e 테스트 (v0.2 추가, v1.0 Public 조건 #2)
+
+회귀 30건은 *모킹* 기반 — 실제 ECOS 응답 형식과 우리 코드 가정이 일치하는지는 별도 검증 필요. **e2e 5건**(`tests/e2e/real-ecos.test.ts`)이 그 역할.
+
+**실행** (로컬, ECOS_API_KEY 필요):
+```bash
+npm run test:e2e
+```
+
+**CI**: GitHub Actions의 `e2e` 잡이 push 이벤트마다 자동 실행 (Secrets `ECOS_API_KEY`).
+
+**ECOS 키 없으면 자동 skip** — `it.skipIf(!hasRealKey)` 패턴. CI에서 키 없을 때도 fail 아님.
+
+**검증 원칙**:
+- *값 자체*는 검증 안 함 (변동성)
+- *구조*와 *환각 방지 4필드*만 검증
+- *실제 응답*에서도 금지어 0건 확인 (회귀 30건 보완)
+
 ### 회귀 테스트 작성 가이드 (v0.2 추가)
 
 **fake timer + reject 조합** (WO-005 패턴):

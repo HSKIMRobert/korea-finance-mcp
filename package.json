@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:regression": "vitest run tests/regression",
+    "test:e2e": "vitest run tests/e2e",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
