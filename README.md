@@ -68,6 +68,16 @@ ETF Insight의 "내부 두뇌"이자 한국 AI 금융 분석의 "외부 표준" 
 3. **회귀 테스트 30개** — 매 배포 자동 실행, 환각 1건 발생 시 즉시 롤백
 4. **도구는 빼는 결정이 우선** — 진입장벽 30개+ 명시적 배제
 
+## 개발 가이드
+
+### pre-push hook 활성화 (v0.2 권장)
+
+```bash
+git config core.hooksPath .githooks
+```
+
+이후 `git push` 시 자동으로 `npm run typecheck` + `npm run test` 실행, 실패 시 push 차단. WO-005·WO-008 학습 기반 영구 안전망. 상세는 [CONTRIBUTING.md §6](CONTRIBUTING.md) 참조.
+
 ## 운영자
 
 **MC AI Labs** (1인 기업) — 유니콘 1인 기업 목표
