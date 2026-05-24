@@ -10,12 +10,19 @@
  */
 
 import { afterEach, expect, vi } from "vitest";
+import { config } from "dotenv";
 import type { EcosRawResponse } from "../src/lib/ecos.js";
 import type { ToolResponse } from "../src/types.js";
 
 // ============================================================
-// [1] 환경변수 주입 — .env 없어도 동작
+// [1] 환경변수 주입 — .env 자동 로드 (WO-014 핫픽스)
 // ============================================================
+// vitest는 .env 자동 로드 안 함 → dotenv 명시 호출.
+// 로컬: .env의 실제 ECOS_API_KEY 로드 → e2e 실행
+// CI: Secrets로 env 변수 직접 주입 → dotenv는 no-op (이미 설정됨)
+// 둘 다 fallback "test-key-mocked"가 최후 (undefined 시 회귀 모킹 동작 보호)
+config();
+
 process.env.ECOS_API_KEY = process.env.ECOS_API_KEY ?? "test-key-mocked";
 process.env.ECOS_BASE_URL =
   process.env.ECOS_BASE_URL ?? "https://ecos.bok.or.kr/api";

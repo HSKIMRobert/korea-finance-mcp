@@ -108,35 +108,28 @@ describe("e2e — 실제 ECOS API 호출 (5건)", () => {
   );
 
   // ──────────────────────────────────────────────
-  // e2e-03: compare_indicators — 금리 + 환율
+  // e2e-03: compare_indicators — 1개 통계 INFO-200 → throw 전파 (회귀 #4 실측)
   // ──────────────────────────────────────────────
+  // ⚠️ 핫픽스 (WO-015, 2026-05-25):
+  //   731Y001(원/달러)은 ECOS에서 *일별*만 운영. cycle='M' 호출 시 INFO-200 반환.
+  //   원래는 align 검증을 의도했지만, 실측 결과 731Y001 cycle='M'이 데이터 없음 →
+  //   우리 코드의 "1개라도 에러면 throw" 룰(회귀 #4)이 실제 작동하는지 e2e 검증으로 재정의.
+  //   회귀 #4가 *모킹 throw*였다면, 본 e2e는 *실제 ECOS INFO-200 → throw* 실측 검증.
   itE2E(
-    "#e2e-03 compare_indicators(722Y001 + 731Y001) — 다지표 시계열 align 실제 검증",
+    "#e2e-03 compare_indicators 1개 통계 데이터 없음 → throw 전파 (회귀 #4 실측 검증)",
     async () => {
-      const now = new Date();
-      const yyyy = now.getUTCFullYear();
-      const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-      const end = `${yyyy}${mm}`;
-      const startDate = new Date(now);
-      startDate.setUTCMonth(startDate.getUTCMonth() - 3);
-      const sy = startDate.getUTCFullYear();
-      const sm = String(startDate.getUTCMonth() + 1).padStart(2, "0");
-      const start = `${sy}${sm}`;
-
-      const res = await executeCompareIndicators({
+      // promise + assertion 미리 wrapping (WO-005 패턴)
+      const promise = executeCompareIndicators({
         indicators: [
-          { code: "722Y001", cycle: "M", label: "BOK 기준금리" },
-          { code: "731Y001", cycle: "M", label: "원/달러" },
+          { code: "722Y001", cycle: "M" }, // 기준금리 — 월별 정상
+          { code: "731Y001", cycle: "M" }, // 환율 월별 — INFO-200 (실측)
         ],
-        start,
-        end,
+        start: "202602",
+        end: "202605",
       });
-
-      assertStandardResponse(res);
-      expect(res.data!.series.length).toBe(2);
-      expect(res.data!.aligned_periods.length).toBeGreaterThan(0);
-      // alignment_note 존재
-      expect(res.data!.alignment_note).toContain("정렬");
+      await expect(promise).rejects.toThrow(
+        /INFO-200|해당하는 데이터가 없습니다|ecos/,
+      );
     },
     60_000, // 직렬 호출 + delay
   );
