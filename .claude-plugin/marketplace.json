@@ -1,0 +1,29 @@
+{
+  "name": "korea-finance",
+  "owner": {
+    "name": "MC AI Labs",
+    "email": "mckim890@gmail.com"
+  },
+  "metadata": {
+    "description": "한국 금융 데이터 MCP — ECOS 거시 5종 + 부동산(RTMS+R-ONE) 4종 (v2.0 라이브)",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "korea-finance",
+      "source": "./plugins/korea-finance",
+      "description": "한국 거시경제(ECOS) + 부동산(국토부 RTMS + R-ONE) 통합 데이터 + 상관계수 시너지 도구. 자본시장법 4종 미등록 명시 + 환각 방지 회귀 38건.",
+      "version": "0.2.0",
+      "author": {
+        "name": "MC AI Labs",
+        "email": "mckim890@gmail.com"
+      },
+      "homepage": "https://github.com/emceeKim/korea-finance-mcp",
+      "repository": "https://github.com/emceeKim/korea-finance-mcp",
+      "license": "MIT",
+      "keywords": ["korea", "finance", "ecos", "real-estate", "rtms", "r-one", "macro", "korean-stocks"],
+      "category": "finance",
+      "tags": ["korea", "finance", "macro", "real-estate"]
+    }
+  ]
+}

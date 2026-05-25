@@ -1,0 +1,16 @@
+{
+  "name": "korea-finance",
+  "description": "한국 금융 데이터 MCP — ECOS 거시 5종 + 부동산 4종 + 시너지 (v2.0 라이브, Fly.io 호스팅)",
+  "version": "0.2.0",
+  "author": {
+    "name": "MC AI Labs",
+    "email": "mckim890@gmail.com"
+  },
+  "homepage": "https://github.com/emceeKim/korea-finance-mcp",
+  "license": "MIT",
+  "mcpServers": {
+    "korea-finance": {
+      "url": "https://korea-finance-mcp-divine-hillside-8872.fly.dev/mcp"
+    }
+  }
+}
