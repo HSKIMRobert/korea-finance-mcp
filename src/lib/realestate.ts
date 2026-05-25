@@ -48,7 +48,9 @@ export function validateYearMonth(ym: string): void {
 }
 
 export const RTMS_ENDPOINTS = {
-  apt: "https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev",
+  // ⚠️ WO-066 핫픽스: AptTradeDev → AptTrade (Dev는 별도 페이지, 활용신청 권한 다름).
+  // 페이지 ID 15126469 (활용신청한 것) = production. Dev 버전은 별도 신청 필요.
+  apt: "https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade",
   villa: "https://apis.data.go.kr/1613000/RTMSDataSvcRHTrade/getRTMSDataSvcRHTrade",
   house: "https://apis.data.go.kr/1613000/RTMSDataSvcSHTrade/getRTMSDataSvcSHTrade",
 } as const;
