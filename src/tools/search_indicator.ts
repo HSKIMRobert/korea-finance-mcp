@@ -112,23 +112,27 @@ export const KNOWN_INDICATORS: ReadonlyArray<{
     unit: "원",
     keywords: ["환율", "원달러", "원/달러", "달러", "USD", "USD/KRW"],
   },
-  // WO-016 (2026-05-25) 3건 시도 → WO-018 (2026-05-25) 일시 비활성:
-  // CPI/GDP/M2 추측 코드가 ECOS 검색에서 ❌ (Step B 결과). 안전 복귀.
-  // 다음 라운드 ECOS API 정확 호출 (StatisticItemList 또는 /1/1000/)로 검증 후 활성.
-  // 코드는 *유지 (주석)* — 검증 후 즉시 활성 위해.
-  //
-  // {
-  //   code: "901Y009", name: "소비자물가지수 (CPI)", cycle: "M", unit: "지수",
-  //   keywords: ["CPI", "소비자물가", "물가", "물가지수", "인플레이션", "소비자물가지수"],
-  // },
-  // {
-  //   code: "200Y001", name: "실질 국내총생산 (GDP)", cycle: "Q", unit: "십억원",
-  //   keywords: ["GDP", "국내총생산", "실질GDP", "경제성장률", "성장률"],
-  // },
-  // {
-  //   code: "101Y004", name: "M2 통화량 (광의통화)", cycle: "M", unit: "조원",
-  //   keywords: ["M2", "통화량", "광의통화", "통화공급", "유동성"],
-  // },
+  // WO-021 (2026-05-25): ECOS StatisticTableList API 역검증 통과 2건 활성.
+  // STAT_NAME은 API 응답 그대로 (환각 방지 양보 불가).
+  {
+    code: "901Y009",
+    name: "소비자물가지수", // ECOS STAT_NAME: "4.2.1. 소비자물가지수"
+    cycle: "M",
+    unit: "지수",
+    keywords: ["CPI", "소비자물가", "물가", "물가지수", "인플레이션"],
+  },
+  {
+    code: "101Y004",
+    name: "M2 상품별 구성내역(평잔, 원계열)", // ECOS STAT_NAME 그대로
+    cycle: "M",
+    unit: "조원",
+    keywords: ["M2", "통화량", "광의통화", "통화공급", "유동성"],
+  },
+  // WO-018/021 비활성 (검증 실패 — ECOS StatisticTableList ❌):
+  //   200Y001 GDP / 901Y012 실업률 / 098Y001 KOSPI
+  // WO-021 보류 (코드 존재하나 *우리 추측 의미와 다름*):
+  //   101Y003 (M2 계절조정계열, 우리는 M1 추측) / 731Y002 (대미달러환율, 우리는 엔 추측)
+  // 다음 라운드 ECOS 웹 검색 또는 StatisticItemList로 정확 코드 확인 후 추가.
 ];
 
 // ECOS 공식 검색 페이지 URL

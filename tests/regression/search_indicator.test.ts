@@ -104,27 +104,26 @@ describe("search_indicator — 회귀 5건", () => {
   });
 
   // ──────────────────────────────────────────────
-  // #6 v0.2 신규 사전 — CPI/GDP/M2 매칭 (WO-016)
-  // WO-018: 3건 일시 비활성 → it.skip (검증 후 it으로 복귀)
+  // #6 v0.2 신규 사전 — CPI·M2 매칭 (WO-021 활성, GDP 검증 실패로 제외)
   // ──────────────────────────────────────────────
-  it.skip("#6 v0.2 신규 사전 — 'CPI'·'GDP'·'M2' 매칭 + cycle 정확 (WO-018 skip)", async () => {
+  it("#6 v0.2 신규 사전 — 'CPI'·'M2' 매칭 + cycle 정확 (WO-021 활성)", async () => {
+    // CPI 901Y009 (ECOS 검증 통과)
     const cpi = await executeSearchIndicator({ query: "CPI", limit: 10 });
     assertStandardResponse(cpi);
     const cpiItem = cpi.data!.find((r) => r.code === "901Y009");
     expect(cpiItem, "901Y009 매칭").toBeDefined();
     expect(cpiItem!.cycle).toBe("M");
+    expect(cpiItem!.name).toContain("소비자물가지수");
 
-    const gdp = await executeSearchIndicator({ query: "GDP", limit: 10 });
-    assertStandardResponse(gdp);
-    const gdpItem = gdp.data!.find((r) => r.code === "200Y001");
-    expect(gdpItem, "200Y001 매칭").toBeDefined();
-    expect(gdpItem!.cycle).toBe("Q");
-
-    const m2 = await executeSearchIndicator({ query: "통화량", limit: 10 });
+    // M2 101Y004 (ECOS 검증 통과)
+    const m2 = await executeSearchIndicator({ query: "M2", limit: 10 });
     assertStandardResponse(m2);
     const m2Item = m2.data!.find((r) => r.code === "101Y004");
     expect(m2Item, "101Y004 매칭").toBeDefined();
     expect(m2Item!.cycle).toBe("M");
+    expect(m2Item!.name).toContain("M2");
+
+    // GDP 200Y001 등은 ECOS 검증 실패로 비활성 (다음 라운드 정확 코드 확인 후)
   });
 
   // ──────────────────────────────────────────────
