@@ -1,0 +1,21 @@
+# 빌드 컨텍스트 최소화 — 이미지 크기·빌드 시간 절감
+node_modules
+dist
+.git
+.github
+.githooks
+tests
+**/*.test.ts
+**/*.spec.ts
+vitest.config.ts
+.env
+.env.local
+.env.*.local
+coverage
+*.log
+.DS_Store
+README.md
+CONTRIBUTING.md
+LICENSE
+wiki
+docs
