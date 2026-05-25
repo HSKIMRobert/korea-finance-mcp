@@ -45,6 +45,26 @@ import {
   executeGetDashboard,
   GetDashboardInputSchema,
 } from "./tools/get_dashboard.js";
+import {
+  getRealEstatePriceTool,
+  executeGetRealEstatePrice,
+  GetRealEstatePriceInputSchema,
+} from "./tools/get_realestate_price.js";
+import {
+  getHousingIndexTool,
+  executeGetHousingIndex,
+  GetHousingIndexInputSchema,
+} from "./tools/get_housing_index.js";
+import {
+  getJeonseRatioTool,
+  executeGetJeonseRatio,
+  GetJeonseRatioInputSchema,
+} from "./tools/get_jeonse_ratio.js";
+import {
+  correlateMacroRealestateTool,
+  executeCorrelateMacroRealestate,
+  CorrelateMacroRealestateInputSchema,
+} from "./tools/correlate_macro_realestate.js";
 
 // ============================================================
 // 환경변수 로드 (.env)
@@ -97,8 +117,37 @@ const TOOLS: ToolDefinition[] = [
     execute: async (input) =>
       executeGetDashboard(GetDashboardInputSchema.parse(input)),
   },
+  {
+    name: getRealEstatePriceTool.name,
+    description: getRealEstatePriceTool.description,
+    inputSchema: getRealEstatePriceTool.inputSchema,
+    execute: async (input) =>
+      executeGetRealEstatePrice(GetRealEstatePriceInputSchema.parse(input)),
+  },
+  {
+    name: getHousingIndexTool.name,
+    description: getHousingIndexTool.description,
+    inputSchema: getHousingIndexTool.inputSchema,
+    execute: async (input) =>
+      executeGetHousingIndex(GetHousingIndexInputSchema.parse(input)),
+  },
+  {
+    name: getJeonseRatioTool.name,
+    description: getJeonseRatioTool.description,
+    inputSchema: getJeonseRatioTool.inputSchema,
+    execute: async (input) =>
+      executeGetJeonseRatio(GetJeonseRatioInputSchema.parse(input)),
+  },
+  {
+    name: correlateMacroRealestateTool.name,
+    description: correlateMacroRealestateTool.description,
+    inputSchema: correlateMacroRealestateTool.inputSchema,
+    execute: async (input) =>
+      executeCorrelateMacroRealestate(CorrelateMacroRealestateInputSchema.parse(input)),
+  },
   // 👇 새 도구는 이 아래에 추가
-  // 🏆 v1.0 거시 5/5 완성 (2026-05-25). 다음은 v2.0 부동산 (5~8주차).
+  // 🏆 v1.0 거시 5/5 + 🏘️ v2.0 부동산 4/4 완성 (2026-05-25). 도구 9/15.
+  // 다음: v3.0 주식 6 도구 (9~12주차).
 ];
 
 // ============================================================
@@ -192,7 +241,7 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   process.stderr.write(
-    `[korea-finance-mcp] server v0.1.0 running — ${TOOLS.length} tool(s) registered\n`,
+    `[korea-finance-mcp] server v0.2.0 running — ${TOOLS.length} tool(s) registered\n`,
   );
 }
 

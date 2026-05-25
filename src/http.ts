@@ -50,6 +50,26 @@ import {
   executeGetDashboard,
   GetDashboardInputSchema,
 } from "./tools/get_dashboard.js";
+import {
+  getRealEstatePriceTool,
+  executeGetRealEstatePrice,
+  GetRealEstatePriceInputSchema,
+} from "./tools/get_realestate_price.js";
+import {
+  getHousingIndexTool,
+  executeGetHousingIndex,
+  GetHousingIndexInputSchema,
+} from "./tools/get_housing_index.js";
+import {
+  getJeonseRatioTool,
+  executeGetJeonseRatio,
+  GetJeonseRatioInputSchema,
+} from "./tools/get_jeonse_ratio.js";
+import {
+  correlateMacroRealestateTool,
+  executeCorrelateMacroRealestate,
+  CorrelateMacroRealestateInputSchema,
+} from "./tools/correlate_macro_realestate.js";
 
 // ============================================================
 // 환경변수 로드
@@ -101,6 +121,34 @@ const TOOLS: ToolDefinition[] = [
     inputSchema: getDashboardTool.inputSchema,
     execute: async (input) =>
       executeGetDashboard(GetDashboardInputSchema.parse(input)),
+  },
+  {
+    name: getRealEstatePriceTool.name,
+    description: getRealEstatePriceTool.description,
+    inputSchema: getRealEstatePriceTool.inputSchema,
+    execute: async (input) =>
+      executeGetRealEstatePrice(GetRealEstatePriceInputSchema.parse(input)),
+  },
+  {
+    name: getHousingIndexTool.name,
+    description: getHousingIndexTool.description,
+    inputSchema: getHousingIndexTool.inputSchema,
+    execute: async (input) =>
+      executeGetHousingIndex(GetHousingIndexInputSchema.parse(input)),
+  },
+  {
+    name: getJeonseRatioTool.name,
+    description: getJeonseRatioTool.description,
+    inputSchema: getJeonseRatioTool.inputSchema,
+    execute: async (input) =>
+      executeGetJeonseRatio(GetJeonseRatioInputSchema.parse(input)),
+  },
+  {
+    name: correlateMacroRealestateTool.name,
+    description: correlateMacroRealestateTool.description,
+    inputSchema: correlateMacroRealestateTool.inputSchema,
+    execute: async (input) =>
+      executeCorrelateMacroRealestate(CorrelateMacroRealestateInputSchema.parse(input)),
   },
 ];
 

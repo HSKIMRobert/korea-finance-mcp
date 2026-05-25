@@ -1,41 +1,37 @@
-# korea-finance-mcp — Fly.io 배포 설정
-# 첫 배포: `fly launch --no-deploy --copy-config` → 본 파일 유지 → `fly deploy`
-# Secrets: `fly secrets set ECOS_API_KEY=...`
+# fly.toml app configuration file generated for korea-finance-mcp-divine-hillside-8872 on 2026-05-25T13:21:18+09:00
 #
-# 가장 작은 인스턴스(shared-cpu-1x · 256MB) 시작 → uptime 7일 확인 후 필요시 스케일업.
-# auto_stop_machines = true → 트래픽 없을 때 자동 정지 (비용 0)
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "korea-finance-mcp"          # ⚠️ `fly launch` 시 주인님 계정 기준 *고유 이름*으로 변경될 수 있음
-primary_region = "nrt"             # 도쿄 (한국 최근접 region)
-kill_signal   = "SIGINT"
-kill_timeout  = "5s"
+app = 'korea-finance-mcp-divine-hillside-8872'
+primary_region = 'nrt'
+kill_signal = 'SIGINT'
+kill_timeout = '5s'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  NODE_ENV     = "production"
-  PORT         = "8080"
-  HOST         = "0.0.0.0"
-  # ALLOWED_HOSTS 는 secrets로: `fly secrets set ALLOWED_HOSTS="korea-finance-mcp.fly.dev"`
-  # ECOS_API_KEY 는 secrets로: `fly secrets set ECOS_API_KEY="..."`
+  HOST = '0.0.0.0'
+  NODE_ENV = 'production'
+  PORT = '8080'
 
 [http_service]
-  internal_port        = 8080
-  force_https          = true
-  auto_stop_machines   = true       # 트래픽 0 → 자동 정지 (비용 절감)
-  auto_start_machines  = true       # 요청 도착 시 자동 시작
-  min_machines_running = 0          # 0 = 콜드 스타트 허용 (1주차 uptime 측정 목적)
-  processes            = ["app"]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
   [[http_service.checks]]
-    interval     = "30s"
-    timeout      = "5s"
-    grace_period = "10s"
-    method       = "GET"
-    path         = "/healthz"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/healthz'
 
 [[vm]]
-  cpu_kind = "shared"
-  cpus     = 1
-  memory   = "256mb"
+  memory = '256mb'
+  cpus = 1
+  memory_mb = 256
