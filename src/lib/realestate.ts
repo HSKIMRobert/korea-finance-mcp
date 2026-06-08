@@ -423,9 +423,12 @@ export async function fetchRtmsTrades(opts: FetchRtmsOptions): Promise<RealEstat
   const trades: RealEstateTrade[] = [];
   for (const item of itemMatches) {
     const raw: Record<string, unknown> = {};
-    const fields = item.match(/<(\w+)>([\s\S]*?)<\/\1>/g) ?? [];
+    // WO-120 핫픽스: \w → [^>\s/]+ (한글 XML 태그 매칭 가능)
+    //   기존 \w는 ASCII alphanumeric만 매치 → RTMS의 <아파트>·<거래금액>·<년> 등 *전부 매칭 실패*
+    //   결과: 100건 모두 빈 값 + price=0 + trade_date="--00-00T..." 반환되던 잠재 버그
+    const fields = item.match(/<([^>\s/]+)>([\s\S]*?)<\/\1>/g) ?? [];
     for (const f of fields) {
-      const m = f.match(/<(\w+)>([\s\S]*?)<\/\1>/);
+      const m = f.match(/<([^>\s/]+)>([\s\S]*?)<\/\1>/);
       const key = m?.[1];
       const value = m?.[2];
       if (key && value !== undefined) {
