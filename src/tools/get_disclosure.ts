@@ -84,7 +84,8 @@ export async function executeGetDisclosure(
         last_updated_at: new Date().toISOString(),
         warnings: [
           `'${validated.company_name}'은 KNOWN_COMPANIES 사전에 없습니다.`,
-          "DART에서 corp_code(8자리)를 확인 후 직접 입력하세요: https://opendart.fss.or.kr/disclosureinfo/company/main.do",
+          `먼저 search_company 도구로 '${validated.company_name}'을 검색해 corp_code(8자리)를 얻은 뒤, corp_code로 다시 호출하세요.`, // WO-124
+          "또는 DART에서 직접 확인: https://opendart.fss.or.kr/disclosureinfo/company/main.do",
         ],
       });
     }

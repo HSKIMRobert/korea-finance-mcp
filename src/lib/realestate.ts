@@ -376,7 +376,15 @@ export function sanitizeTrade(raw: Record<string, unknown>, regionCode: string):
   return {
     region_code: regionCode,
     region_name,
-    complex_name: String(raw["아파트"] ?? raw["연립다세대"] ?? raw["단독다가구"] ?? raw["apartmentName"] ?? "").trim(),
+    // WO-122: data.go.kr 신 게이트웨이 영문 필드명 체계 반영 (fly ssh 실측 2026-06-11)
+    //   apt → aptNm / villa(연립다세대) → mhouseNm / house(단독다가구) → houseType(유형명) fallback
+    //   구 한글 태그·apartmentName은 하위호환으로 유지
+    complex_name: String(
+      raw["아파트"] ?? raw["aptNm"] ??
+      raw["연립다세대"] ?? raw["mhouseNm"] ??
+      raw["단독다가구"] ?? raw["houseType"] ??
+      raw["apartmentName"] ?? "",
+    ).trim(),
     unit_area: Number(raw["전용면적"] ?? raw["excluUseAr"] ?? 0),
     price: Number(priceStr),
     trade_date: `${year}-${month}-${day}T00:00:00Z`,
@@ -395,6 +403,23 @@ export interface FetchRtmsOptions {
   api_key?: string;
 }
 
+// WO-123: RTMS 단건 호출 견고화 — 타임아웃 + 5xx·네트워크 1회 재시도 + 100건 캡 해제
+//   배경: 다른 에이전트 세션에서 502·fetch failed 실측 (2026-06-11).
+//   - 타임아웃 없던 fetch가 hang → fly 프록시 60s에서 502로 표출
+//   - numOfRows=100 → 강남구 등 월 100건 초과 시군구에서 단지 누락 (정확성 결함)
+export const RTMS_FETCH_TIMEOUT_MS = 8000;
+export const RTMS_NUM_OF_ROWS = 1000;
+
+async function fetchOnceWithTimeout(url: string): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), RTMS_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchRtmsTrades(opts: FetchRtmsOptions): Promise<RealEstateTrade[]> {
   validateRegionCode(opts.region_code);
   validateYearMonth(opts.year_month);
@@ -411,9 +436,19 @@ export async function fetchRtmsTrades(opts: FetchRtmsOptions): Promise<RealEstat
   }
 
   const endpoint = RTMS_ENDPOINTS[opts.property_type];
-  const url = `${endpoint}?serviceKey=${apiKey}&LAWD_CD=${opts.region_code}&DEAL_YMD=${opts.year_month}&pageNo=1&numOfRows=100`;
+  const url = `${endpoint}?serviceKey=${apiKey}&LAWD_CD=${opts.region_code}&DEAL_YMD=${opts.year_month}&pageNo=1&numOfRows=${RTMS_NUM_OF_ROWS}`;
 
-  const res = await fetch(url);
+  // 1회 재시도 (5xx·타임아웃·네트워크 한정 — 4xx는 재시도 무의미)
+  let res: Response;
+  try {
+    res = await fetchOnceWithTimeout(url);
+    if (res.status >= 500) {
+      throw new Error(`[realestate] RTMS API HTTP ${res.status}`);
+    }
+  } catch {
+    await new Promise((r) => setTimeout(r, 400)); // 짧은 backoff (rate limit 배려)
+    res = await fetchOnceWithTimeout(url);
+  }
   if (!res.ok) {
     throw new Error(`[realestate] RTMS API HTTP ${res.status}`);
   }
@@ -421,12 +456,15 @@ export async function fetchRtmsTrades(opts: FetchRtmsOptions): Promise<RealEstat
 
   const itemMatches = text.match(/<item>[\s\S]*?<\/item>/g) ?? [];
   const trades: RealEstateTrade[] = [];
-  for (const item of itemMatches) {
+  for (const itemBlock of itemMatches) {
     const raw: Record<string, unknown> = {};
-    // WO-120 핫픽스: \w → [^>\s/]+ (한글 XML 태그 매칭 가능)
-    //   기존 \w는 ASCII alphanumeric만 매치 → RTMS의 <아파트>·<거래금액>·<년> 등 *전부 매칭 실패*
-    //   결과: 100건 모두 빈 값 + price=0 + trade_date="--00-00T..." 반환되던 잠재 버그
-    const fields = item.match(/<([^>\s/]+)>([\s\S]*?)<\/\1>/g) ?? [];
+    // WO-122 핫픽스 (진짜 근본 원인, 2026-06-11 fly ssh 실측 XML로 확정):
+    //   <item>…</item> 문자열에 필드 정규식을 그대로 돌리면 *<item> 자신*이 첫 여는 태그로
+    //   매치되고 non-greedy가 끝의 </item>까지 삼켜 raw = { item: "<buildYear>…" } 1개만 생성
+    //   → 모든 필드 빈 값("", 0, "-00-00"). WO-120은 "한글 태그" 문제로 오진했던 것.
+    //   수정: 래퍼를 벗기고 *내부만* 파싱. (실측: 응답 태그는 전부 영문 — mhouseNm·dealAmount 등)
+    const inner = itemBlock.slice("<item>".length, -"</item>".length);
+    const fields = inner.match(/<([^>\s/]+)>([\s\S]*?)<\/\1>/g) ?? [];
     for (const f of fields) {
       const m = f.match(/<([^>\s/]+)>([\s\S]*?)<\/\1>/);
       const key = m?.[1];
@@ -440,6 +478,16 @@ export async function fetchRtmsTrades(opts: FetchRtmsOptions): Promise<RealEstat
 
   RTMS_CACHE.set(cacheKey, { ts: Date.now(), data: trades });
   return trades;
+}
+
+/**
+ * data.go.kr rate limit 보호 지연 (WO-005 250ms 패턴, correlate_macro_realestate와 동일).
+ * 월 순회 등 연속 RTMS 호출 도구는 호출 *사이*에 반드시 이 함수를 경유한다.
+ * lib에 두는 이유: 테스트에서 vi.mock(realestate.js)으로 0ms 대체 가능 (fake timer 사전 래핑 패턴).
+ */
+export const RTMS_INTER_CALL_DELAY_MS = 250;
+export async function rateLimitDelay(): Promise<void> {
+  await new Promise((r) => setTimeout(r, RTMS_INTER_CALL_DELAY_MS));
 }
 
 export function _mockRtmsTrade(overrides: Partial<RealEstateTrade> = {}): RealEstateTrade {

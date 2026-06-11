@@ -114,6 +114,18 @@ import {
   executeGetExecutiveHoldings,
   GetExecutiveHoldingsInputSchema,
 } from "./tools/get_executive_holdings.js";
+// v1.3: 부동산 추세 시계열 — 18번째 도구
+import {
+  trackApartmentTrendTool,
+  executeTrackApartmentTrend,
+  TrackApartmentTrendInputSchema,
+} from "./tools/track_apartment_trend.js";
+// v1.4 (WO-124): 회사명 → corp_code 검색 — 19번째 도구
+import {
+  searchCompanyTool,
+  executeSearchCompany,
+  SearchCompanyInputSchema,
+} from "./tools/search_company.js";
 
 // ============================================================
 // 환경변수 로드
@@ -293,6 +305,26 @@ const TOOLS: ToolDefinition[] = [
     execute: async (input) =>
       executeGetExecutiveHoldings(GetExecutiveHoldingsInputSchema.parse(input)),
   },
+  // v1.3 — track_apartment_trend (RTMS 월 순회 시계열). 17 → 18 도구.
+  {
+    name: trackApartmentTrendTool.name,
+    title: trackApartmentTrendTool.title,
+    description: trackApartmentTrendTool.description,
+    inputSchema: trackApartmentTrendTool.inputSchema,
+    annotations: trackApartmentTrendTool.annotations,
+    execute: async (input) =>
+      executeTrackApartmentTrend(TrackApartmentTrendInputSchema.parse(input)),
+  },
+  // v1.4 (WO-124) — search_company. 18 → 19 도구.
+  {
+    name: searchCompanyTool.name,
+    title: searchCompanyTool.title,
+    description: searchCompanyTool.description,
+    inputSchema: searchCompanyTool.inputSchema,
+    annotations: searchCompanyTool.annotations,
+    execute: async (input) =>
+      executeSearchCompany(SearchCompanyInputSchema.parse(input)),
+  },
 ];
 
 // ============================================================
@@ -300,7 +332,7 @@ const TOOLS: ToolDefinition[] = [
 // ============================================================
 function buildServer(): Server {
   const server = new Server(
-    { name: "korea-finance-mcp", version: "1.1.0" }, // WO-115: v1.1 — DS004 지분공시 2 도구 추가 = 17
+    { name: "korea-finance-mcp", version: "1.4.0" }, // WO-124: v1.4 — track_apartment_trend(18) + search_company(19)
     { capabilities: { tools: {} } },
   );
 
@@ -405,7 +437,7 @@ async function main(): Promise<void> {
     res.status(200).json({
       status: "ok",
       service: "korea-finance-mcp",
-      version: "1.1.0", // WO-115: v1.1 동기화
+      version: "1.4.0", // WO-124: v1.4 동기화
       tools: TOOLS.length,
       timestamp: new Date().toISOString(),
     });
@@ -471,8 +503,23 @@ async function main(): Promise<void> {
       let transport: StreamableHTTPServerTransport;
 
       if (sessionId && transports[sessionId]) {
-        // 기존 세션 재사용
+        // 기존 세션 재사용 + max age 타이머 갱신 (WO-121: 주석 의도 "30분 *미사용* 시"와 일치하도록 sliding 갱신)
         transport = transports[sessionId];
+        scheduleSessionTimeout(sessionId);
+      } else if (sessionId && !transports[sessionId]) {
+        // WO-121 핫픽스: 서버 재시작·만료로 *소실된* 세션 → MCP 스펙상 404 의무
+        //   (스펙: "404 수신 시 클라이언트는 MUST 새 InitializeRequest로 세션 재시작")
+        //   기존 400 응답은 클라이언트 자동 복구를 차단 → 배포 때마다 Cowork 등
+        //   모든 클라이언트가 "Tool execution failed"로 멈추고 수동 재연결 필요했음.
+        res.status(404).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32001,
+            message: "Session not found — expired or server restarted. Re-initialize required.",
+          },
+          id: null,
+        });
+        return;
       } else if (!sessionId && isInitializeRequest(req.body)) {
         // 신규 initialize — transport 생성 + 세션 발급 시 맵에 등록
         transport = new StreamableHTTPServerTransport({
@@ -525,10 +572,19 @@ async function main(): Promise<void> {
   // GET — SSE 스트림 (서버 → 클라이언트 알림 채널)
   app.get("/mcp", mcpLimiter, async (req: ExpressRequest, res: ExpressResponse) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (!sessionId || !transports[sessionId]) {
+    if (!sessionId) {
       res.status(400).json({
         jsonrpc: "2.0",
         error: { code: -32000, message: "Invalid or missing session ID" },
+        id: null,
+      });
+      return;
+    }
+    if (!transports[sessionId]) {
+      // WO-121: 소실 세션 → 404 (클라이언트 재초기화 유도, POST와 동일 정책)
+      res.status(404).json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Session not found — re-initialize required." },
         id: null,
       });
       return;
@@ -551,10 +607,20 @@ async function main(): Promise<void> {
   // DELETE — 세션 종료
   app.delete("/mcp", mcpLimiter, async (req: ExpressRequest, res: ExpressResponse) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (!sessionId || !transports[sessionId]) {
+    if (!sessionId) {
       res.status(400).json({
         jsonrpc: "2.0",
         error: { code: -32000, message: "Invalid or missing session ID" },
+        id: null,
+      });
+      return;
+    }
+    if (!transports[sessionId]) {
+      // WO-121: 소실 세션 → 404. DELETE는 "이미 없음" = 사실상 종료 완료이나
+      //   스펙 일관성 위해 404 유지 (클라이언트는 다음 요청에서 재초기화)
+      res.status(404).json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Session not found — re-initialize required." },
         id: null,
       });
       return;

@@ -107,6 +107,18 @@ import {
   executeGetExecutiveHoldings,
   GetExecutiveHoldingsInputSchema,
 } from "./tools/get_executive_holdings.js";
+// v1.3: 부동산 추세 시계열 — 18번째 도구
+import {
+  trackApartmentTrendTool,
+  executeTrackApartmentTrend,
+  TrackApartmentTrendInputSchema,
+} from "./tools/track_apartment_trend.js";
+// v1.4 (WO-124): 회사명 → corp_code 검색 — 19번째 도구
+import {
+  searchCompanyTool,
+  executeSearchCompany,
+  SearchCompanyInputSchema,
+} from "./tools/search_company.js";
 
 // ============================================================
 // 환경변수 로드 (.env)
@@ -291,6 +303,27 @@ const TOOLS: ToolDefinition[] = [
     execute: async (input) =>
       executeGetExecutiveHoldings(GetExecutiveHoldingsInputSchema.parse(input)),
   },
+  // v1.3 — track_apartment_trend (RTMS 월 순회 시계열). 17 → 18 도구.
+  // 과거 실거래 집계만, 해석·전망 0건 (자본시장법 영구 잠금).
+  {
+    name: trackApartmentTrendTool.name,
+    title: trackApartmentTrendTool.title,
+    description: trackApartmentTrendTool.description,
+    inputSchema: trackApartmentTrendTool.inputSchema,
+    annotations: trackApartmentTrendTool.annotations,
+    execute: async (input) =>
+      executeTrackApartmentTrend(TrackApartmentTrendInputSchema.parse(input)),
+  },
+  // v1.4 (WO-124) — search_company. 18 → 19 도구. KNOWN_COMPANIES 한계 해소.
+  {
+    name: searchCompanyTool.name,
+    title: searchCompanyTool.title,
+    description: searchCompanyTool.description,
+    inputSchema: searchCompanyTool.inputSchema,
+    annotations: searchCompanyTool.annotations,
+    execute: async (input) =>
+      executeSearchCompany(SearchCompanyInputSchema.parse(input)),
+  },
 ];
 
 // ============================================================
@@ -299,7 +332,7 @@ const TOOLS: ToolDefinition[] = [
 const server = new Server(
   {
     name: "korea-finance-mcp",
-    version: "1.1.0", // WO-115: v1.1 — DS004 지분공시 2 도구 추가
+    version: "1.4.0", // WO-124: v1.4 — track_apartment_trend(18) + search_company(19)
   },
   {
     capabilities: {

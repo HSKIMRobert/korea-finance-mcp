@@ -7,10 +7,72 @@ versioning by [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Planned for v1.2
+### Planned
+- ⏳ DS005 주요사항보고서 도구 2종 — CB/BW 발행결정 + 유상·무상증자 결정 (발행가·전환가액·증자비율 정형 조회)
 - ⏳ Cloudflare proxy + ALLOWED_HOSTS 활성화 (uptime 7일 후)
 - ⏳ 시너지 도구 정밀화 (lag 자동 탐지, 3 도구)
 - ⏳ Anthropic MCP Directory 제출 (후순위)
+
+## [1.4.0] — 2026-06-11 🔎 v1.4 — search_company = 19 도구 (corp_code 자동 해결)
+
+### Added
+- **`search_company` (19번째 도구)** — 회사명 부분일치 → DART corp_code 검색.
+  corpCode.xml 전체(~10만 기업) 서버 1회 다운로드 + **24h 캐시**, 상장 우선·정확명 우선 정렬.
+  KNOWN_COMPANIES 30개 한계 해소 — 어떤 상장사든 에이전트 체인이 끊기지 않음.
+- `unzipSingleEntry` — **zero-dep zip 해제** (zlib.inflateRawSync, deflate/stored). 외부 의존성 0 유지.
+- `tests/regression/16-search_company.test.ts` (re-21a~g) — Python zipfile로 생성한 실물 zip을 base64 내장 (파서·생성기 독립).
+
+### Changed
+- `get_disclosure`: KNOWN_COMPANIES 미등재 시 search_company 안내 warning 추가 — 도구 간 체인 연결 (WO-124).
+
+## [1.3.0] — 2026-06-11 🏘️ v1.3 — track_apartment_trend = 18 도구 + RTMS 파서 근본 수정
+
+### Added
+- **`track_apartment_trend` (18번째 도구)** — 단지 실거래 추세 시계열.
+  월별 순회(호출 사이 250ms) → 단지명 부분일치(공백 정규화) → 면적대(㎡ 절사)별
+  {거래건수·평균가·최저/최고가} + 직전월 대비 변동률(%). `property_type` apt|villa|house.
+  RTMS 신고기한 30일 → 최근 1~2개월 불완전 warning 의무. 기간 상한 24개월.
+- `tests/regression/14-track_apartment_trend.test.ts` (re-19a~p) + `15-rtms-xml-parsing.test.ts` (re-20a~d, **fly ssh 실측 XML 픽스처**).
+
+### Fixed
+- **WO-122 — "100건 전부 빈 값" 근본 수정**: `<item>` 래퍼가 필드 정규식에 자기-매치되어
+  내부 전체를 삼키던 파서 버그. 래퍼 제거 후 내부만 파싱 + 신 영문 필드(`aptNm`/`mhouseNm`) 매핑.
+  (WO-120의 "한글 태그" 진단은 오진 — 실측 응답은 전부 영문 태그.)
+- **WO-121 — 세션 자동 복구**: 서버 재시작으로 소실된 세션에 400 대신 **404** 반환 (MCP 스펙) →
+  클라이언트 자동 re-initialize. 배포 때마다 전 클라이언트가 수동 재연결하던 결함 영구 해소.
+  활성 세션 타이머 sliding 갱신.
+
+### Changed
+- **WO-123 — 견고화**: RTMS 단건 8s 타임아웃 + 5xx/네트워크 1회 재시도(400ms backoff) /
+  `numOfRows` 100→**1000** (월 100건 초과 시군구 누락 해소) /
+  track 40s deadline — 초과 시 수집 prefix만 집계 + 미수집 구간 warning (0건 위장 금지).
+
+## [1.2.0] — 2026-05-31 🌏 v1.2 — 전국 250개 시군구 + 정부 RTMS 수준 정렬
+
+### Added
+- **KNOWN_REGIONS 전국 250개 시군구 등록** (10 → 250) — 서울 25 + 광역시 51 + 세종 1 + 경기 42 + 강원 18 + 충북 14 + 충남 16 + 전북 15 + 전남 22 + 경북 23 + 경남 22 + 제주 2
+- 부동산 거래 응답에 **`jibun`(지번) + `floor`(층) 공개** — 정부 RTMS rt.molit.go.kr 공개 수준과 동일
+- `src/lib/operational-metrics.ts` — 운영 인프라 모듈 (기본 비활성, ENABLED=false)
+- `migrations/001_operational_metrics.sql` — Supabase kfin_tool_calls 테이블
+
+### Changed
+- **validateRegionCode**: KNOWN_REGIONS 강제 검증 제거 → 5자리 형식만 검증. 미등록 코드는 RTMS API 위임 → 빈 응답 시 INFO-200 fallback.
+- 부동산 sanitize 정책: "정부보다 1단계 보수적" → **"정부 RTMS 공개 정책 준수"** (지번·층 공개, 동·호 마스킹)
+- PRIVACY v1.1 → v1.2: 네이버 컨셉 (수집 가능 카테고리 명시)
+- README "무엇을 할 수 있나요" 사용자 친화 도입부 추가, 17 도구 표
+
+### Security
+- **Express trust proxy 핫픽스**: `app.set('trust proxy', 1)` — Fly.io 프록시 신뢰 → express-rate-limit이 실제 사용자 IP 식별 → 분산 공격 방어
+
+### Internal
+- WO-110: README v1.1 + trust proxy + PRIVACY 통합 핫픽스
+- WO-111: KNOWN_TICKERS 30건 데이터 추가
+- WO-112: DART DS004 2 도구 추가 (지분공시)
+- WO-113: DNS rebinding 코드 검증 (활성화 deferred)
+- WO-116: 부동산 sanitize 정부 수준 정렬 (jibun·floor 공개)
+- WO-117: 운영 메트릭 인프라 모듈 (Supabase 통합 코드, 기본 비활성)
+- WO-118: KNOWN_REGIONS 전국 250개 확장 (제주 50110 포함 모든 시군구)
+- WO-119: v1.2.0 정식 출시 (버전 통일)
 
 ## [1.1.0] — 2026-05-31 🆕 v1.1 — DART DS004 지분공시 2 도구 추가 = 17 도구
 

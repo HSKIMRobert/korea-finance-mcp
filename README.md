@@ -1,17 +1,20 @@
 # korea-finance-mcp
 
-> **한국 첫 자본시장법-안전 금융 MCP. 1인 운영. 15 도구. 시너지 2종 (한국 유일).**
-> *The first Korea-finance MCP that's legally safe to deploy. 1-person operated. 15 tools. 2 Korea-unique synergy tools.*
+> **한국 첫 자본시장법-안전 금융 MCP. 1인 운영. 19 도구. 시너지 2종 (한국 유일).**
+> *The first Korea-finance MCP that's legally safe to deploy. 1-person operated. 19 tools. 2 Korea-unique synergy tools.*
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![MCP](https://img.shields.io/badge/MCP-compatible-blue)
-![Tools](https://img.shields.io/badge/tools-17-brightgreen)
+![Tools](https://img.shields.io/badge/tools-19-brightgreen)
 ![Korea Finance](https://img.shields.io/badge/data-Korea_Finance-red)
-![Status](https://img.shields.io/badge/status-Public_v1.1-blue)
+![Status](https://img.shields.io/badge/status-Public_v1.4-blue)
 
 한국은행 ECOS · 국토부 RTMS · 한국부동산원 R-ONE · DART · KRX 통합 + ⭐⭐ **시너지 도구 2종 (외국 MCP 진입 불가)** + *자본시장법 4종 미등록 영구 잠금* + 환각 방지 6중 안전망.
 
-**🎉 v1.1 Release** (2026-05-31) — DART DS004 지분공시 2 도구 추가 (5% 룰 + 임원·주요주주). 17/17 도구.
+**🎉 v1.4 Release** (2026-06-11) — `search_company`: 회사명 → DART corp_code 검색 (전체 ~10만 기업, 24h 캐시). 19/19 도구.
+**v1.3** (2026-06-11) — `track_apartment_trend`: 단지 실거래 추세 시계열 (면적대별 월별 집계 + 전월 대비 변동률) + RTMS 파서 근본 수정 + 세션 자동복구(404)·타임아웃 견고화.
+**v1.2** (2026-05-31) — 전국 250개 시군구 지원 + 지번·층 공개 (정부 RTMS 수준 정렬).
+**v1.1** (2026-05-31) — DART DS004 지분공시 2 도구 (5% 룰 + 임원·주요주주).
 **v1.0 Public** (2026-05-25) — Cowork · Claude Desktop · MCP Inspector · Cursor 호환 검증 완료.
 
 ---
@@ -74,14 +77,21 @@ npm start  # 또는 npm run start:http for remote deployment
 
 ---
 
-## 🎯 17 도구 (한 화면 요약)
+## 🎯 19 도구 (한 화면 요약)
 
 | 카테고리 | 도구 | 데이터원 | 차별화 |
 |---|---|---|---|
 | **거시 (5)** | `get_indicator` / `search_indicator` / `get_timeseries` / `compare_indicators` / `get_dashboard` | 한국은행 ECOS | KNOWN_INDICATORS 정적 사전 (추측 금지) |
-| **부동산 (4)** | `get_realestate_price` / `get_housing_index` / `get_jeonse_ratio` / **`correlate_macro_realestate`** ⭐ | 국토부 RTMS + R-ONE | 정부 RTMS 공개 정책 준수 — 지번·층 공개, 동·호 마스킹 (정부 기준 동일) |
+| **부동산 (5)** | `get_realestate_price` / `get_housing_index` / `get_jeonse_ratio` / **`track_apartment_trend`** 🆕 v1.3 / **`correlate_macro_realestate`** ⭐ | 국토부 RTMS + R-ONE | 정부 RTMS 공개 정책 준수 — 지번·층 공개, 동·호 마스킹 (정부 기준 동일) |
 | **주식 (6)** | `get_disclosure` / `get_financials` / `get_stock_price` / `get_market_index` / **`correlate_macro_stock`** ⭐ / **`correlate_stock_realestate`** ⭐⭐ | DART + KRX | **한국 유일** 시너지 (외국 MCP 진입 불가) |
-| **지분공시 (2)** 🆕 v1.1 | `get_major_holdings` (5% 룰) / `get_executive_holdings` (임원·주요주주) | DART DS004 | 자본시장법 §147~149 *조회만*, 해석·예측 X |
+| **지분공시 (2)** v1.1 | `get_major_holdings` (5% 룰) / `get_executive_holdings` (임원·주요주주) | DART DS004 | 자본시장법 §147~149 *조회만*, 해석·예측 X |
+| **기업 검색 (1)** 🆕 v1.4 | `search_company` — 회사명 → corp_code | DART corpCode (~10만 기업) | KNOWN_COMPANIES 한계 해소 — 에이전트 도구 체인 무단절 |
+
+#### 🆕 v1.3 `track_apartment_trend` 사용 예
+> "제주시(50110) 정원파인즈 단지의 최근 2년 매매 추이를 보여줘" → 면적대별 월별 {거래건수·평균가·최저/최고가(만원)} + 직전월 대비 변동률(%). 최근 1~2개월은 RTMS 신고기한(30일) 미경과 warning 자동 포함. *과거 실거래 집계만 — 예측·전망·추천 0건.*
+
+#### 🆕 v1.4 `search_company` 사용 예
+> "삼양식품 corp_code 찾아줘" → `{corp_code, corp_name, stock_code}` 상위 후보 반환 (상장 우선) → 그대로 `get_disclosure`·`get_financials`의 corp_code 입력으로 사용.
 
 ### ⭐⭐ 시너지 도구의 진짜 차별화
 

@@ -15,6 +15,7 @@
  */
 
 import { z } from "zod";
+import * as zlib from "node:zlib";
 
 // ============================================================
 // Base URL + Endpoints
@@ -522,4 +523,111 @@ export function _mockDartDisclosure(
     rm: "",
     ...overrides,
   };
+}
+
+// ============================================================
+// WO-124: corpCode 디렉터리 — 회사명 → corp_code 검색 (search_company용)
+//
+// 배경: KNOWN_COMPANIES 30개 밖의 회사(예: 삼양식품)는 사용자가 corp_code를
+//   수동으로 zip 다운로드해 찾아야 했음. 서버가 corpCode.xml(전체 ~10만 기업)을
+//   1회 받아 24h 캐시하면 어떤 회사든 회사명 부분일치로 즉시 해결.
+// zero-dep zip 해제: corpCode.zip은 단일 엔트리 — zlib.inflateRawSync로 충분.
+// ============================================================
+
+export interface CorpEntry {
+  corp_code: string;
+  corp_name: string;
+  /** 6자리 종목코드 (비상장은 빈 문자열) */
+  stock_code: string;
+}
+
+/** 단일 엔트리 zip 해제 (corpCode.zip 전용, 의존성 0) */
+export function unzipSingleEntry(buf: Buffer): Buffer {
+  if (buf.length < 30 || buf.readUInt32LE(0) !== 0x04034b50) {
+    throw new Error("[dart] zip 형식 아님 (PK 로컬 헤더 없음)");
+  }
+  const method = buf.readUInt16LE(8);
+  const compSize = buf.readUInt32LE(18); // data descriptor 사용 시 0
+  const fnLen = buf.readUInt16LE(26);
+  const exLen = buf.readUInt16LE(28);
+  const start = 30 + fnLen + exLen;
+  const data = compSize > 0 ? buf.subarray(start, start + compSize) : buf.subarray(start);
+
+  if (method === 0) {
+    if (compSize === 0) throw new Error("[dart] stored + data descriptor 조합 미지원");
+    return Buffer.from(data);
+  }
+  if (method === 8) {
+    // compSize=0(descriptor)이어도 Z_SYNC_FLUSH로 유효 스트림 끝에서 정상 종료
+    return zlib.inflateRawSync(data, { finishFlush: zlib.constants.Z_SYNC_FLUSH });
+  }
+  throw new Error(`[dart] 지원하지 않는 zip 압축 방식: ${method}`);
+}
+
+let CORP_DIR_CACHE: { ts: number; entries: CorpEntry[] } | null = null;
+const CORP_DIR_TTL_MS = 24 * 60 * 60 * 1000; // 24h — corpCode는 일 단위 갱신 자료
+
+/** 테스트 전용 — 캐시 리셋 */
+export function _resetCorpDirCache(): void {
+  CORP_DIR_CACHE = null;
+}
+
+export async function loadCorpDirectory(apiKey?: string): Promise<CorpEntry[]> {
+  if (CORP_DIR_CACHE && Date.now() - CORP_DIR_CACHE.ts < CORP_DIR_TTL_MS) {
+    return CORP_DIR_CACHE.entries;
+  }
+  const key = apiKey ?? process.env.DART_API_KEY ?? "";
+  if (!key) {
+    throw new Error("[dart] DART_API_KEY 미설정");
+  }
+  const res = await fetch(`${DART_ENDPOINTS.corp_code_xml}?crtfc_key=${key}`);
+  if (!res.ok) {
+    throw new Error(`[dart] corpCode 다운로드 HTTP ${res.status}`);
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  // 인증키 오류 시 zip이 아니라 XML/JSON 에러 본문이 옴 — 그대로 노출 (추측 금지)
+  if (buf.length < 30 || buf.readUInt32LE(0) !== 0x04034b50) {
+    const head = buf.subarray(0, 200).toString("utf8").replace(/\s+/g, " ");
+    throw new Error(`[dart] corpCode 응답이 zip이 아님 — ${head}`);
+  }
+  const xml = unzipSingleEntry(buf).toString("utf8");
+
+  const entries: CorpEntry[] = [];
+  const re =
+    /<corp_code>(\d{8})<\/corp_code>\s*<corp_name>([^<]*)<\/corp_name>(?:\s*<corp_eng_name>[^<]*<\/corp_eng_name>)?\s*<stock_code>([^<]*)<\/stock_code>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml))) {
+    entries.push({
+      corp_code: m[1]!,
+      corp_name: m[2]!.trim(),
+      stock_code: m[3]!.trim(),
+    });
+  }
+  if (entries.length === 0) {
+    throw new Error("[dart] corpCode 파싱 0건 — XML 형식 변경 가능성. 추측하지 않음.");
+  }
+  CORP_DIR_CACHE = { ts: Date.now(), entries };
+  return entries;
+}
+
+/** 회사명 부분일치 검색 — 상장 우선 → 이름 짧은 순(정확 일치 우선) */
+export async function searchCorpByName(
+  query: string,
+  opts: { listed_only?: boolean; limit?: number; api_key?: string } = {},
+): Promise<CorpEntry[]> {
+  const q = query.replace(/\s+/g, "").toLowerCase();
+  const limit = opts.limit ?? 10;
+  const listedOnly = opts.listed_only ?? true;
+  const entries = await loadCorpDirectory(opts.api_key);
+  return entries
+    .filter((e) => e.corp_name.replace(/\s+/g, "").toLowerCase().includes(q))
+    .filter((e) => !listedOnly || /^\d{6}$/.test(e.stock_code))
+    .sort((a, b) => {
+      const al = /^\d{6}$/.test(a.stock_code) ? 0 : 1;
+      const bl = /^\d{6}$/.test(b.stock_code) ? 0 : 1;
+      if (al !== bl) return al - bl;
+      if (a.corp_name.length !== b.corp_name.length) return a.corp_name.length - b.corp_name.length;
+      return a.corp_name.localeCompare(b.corp_name, "ko");
+    })
+    .slice(0, limit);
 }
